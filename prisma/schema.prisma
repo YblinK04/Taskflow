@@ -1,0 +1,116 @@
+// prisma/schema.prisma
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  
+  extensions = [pg_trgm, pgcrypto] // Расширения для поиска и шифрования
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String    // Хэшированный пароль
+  name          String?
+  role          Role      @default(USER)
+  image         String?
+  emailVerified DateTime?
+  
+  // Отношения
+  projects      Project[] @relation("ProjectOwner")
+  comments      Comment[]
+  assignedTasks Task[]    @relation("TaskAssignee")
+  
+  // Таймстампы
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6") // Hex цвет для визуального отличия
+  isPublic    Boolean  @default(false)
+  
+  // Отношения
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId     String
+  tasks       Task[]
+  
+  // Таймстампы
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("projects")
+  @@index([ownerId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      Status   @default(TODO)
+  priority    Priority @default(MEDIUM)
+  order       Int      @default(0) // Для сортировки в колонках
+  dueDate     DateTime?
+  
+  // Отношения
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigneeId  String?
+  comments    Comment[]
+  
+  // Таймстампы
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("tasks")
+  @@index([projectId, status])
+  @@index([assigneeId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  isEdited  Boolean  @default(false)
+  
+  // Отношения
+  task      Task     @relation(fields: [taskId], references: [id])
+  taskId    String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  
+  // Таймстампы
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("comments")
+  @@index([taskId])
+}
+
+// Enums для типизации
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
