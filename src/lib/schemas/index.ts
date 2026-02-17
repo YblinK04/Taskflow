@@ -32,16 +32,17 @@ export const ProjectSchema = z.object({
     description: z.string().max(500).optional(),
     color: z.string().regex(/^#[0-9A-F]{6}$/i).default('#3b82f6'),
     isPublic: z.boolean().default(false),
-    ownedId: z.string(),
+    ownerId: z.string(),
     createdAt: z.date(),
     updatedAt: z.date()
 });
 
-export const CreateProjectSchema = ProjectSchema.pick({
-  name: true,
-  description: true,
-  color: true,
-  isPublic: true,
+export const CreateProjectSchema = z.object({
+  
+  name: z.string().min(1, 'Название обязательно').max(100),
+  description: z.string().max(500), 
+  color: z.string().regex(/^#[0-9A-F]{6}$/i),
+  isPublic: z.boolean(),
 });
 
 export const UpdateProjectSchema = CreateProjectSchema.partial();
@@ -101,6 +102,12 @@ export const CreateCommentSchema = CommentSchema.pick({
   taskId: true,
 });
 
+export const ProjectResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  
+});
+
 // Типы TypeScript из схем
 export type User = z.infer<typeof UserSchema>;
 export type CreateUserInput = z.infer<typeof CreatedUserSchema>;
@@ -114,3 +121,4 @@ export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 export type MoveTaskInput = z.infer<typeof MoveTaskSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
+export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
