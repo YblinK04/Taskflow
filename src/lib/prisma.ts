@@ -1,22 +1,31 @@
-import { Client, neonConfig} from '@neondatabase/serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 import ws from 'ws';
 
-// Важно для Node.js окружения
-neonConfig.webSocketConstructor = ws;
+if (typeof window === 'undefined') {
+  neonConfig.webSocketConstructor = ws;
+}
 
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.DATABASE_URL;
 
-// 1. Создаем пул соединений Neon
-const client = new Client(connectionString); 
+const prismaClientSingleton = () => {
+  if (!connectionString) {
+    throw new Error("❌ DATABASE_URL is missing!");
+  }
 
-// 2. Создаем адаптер
-const adapter = new PrismaNeon(client); ;
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaNeon(pool as any);
+  
+  // Явно указываем URL, чтобы Prisma не гадала
+  return new PrismaClient({ adapter });
+};
 
-// 3. Передаем адаптер в клиент
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
+// Экспортируем константу prisma
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
